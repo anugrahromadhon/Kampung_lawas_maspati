@@ -766,7 +766,7 @@ function speak(text){
   speechSynthesis.cancel();
   // Browser butuh sedikit jeda supaya cancel() benar-benar tuntas sebelum ucapan baru dimulai —
   // kalau langsung speak() lagi setelah cancel() (apalagi ganti voice/bahasa), dua suara bisa
-  // sempat tumpang tindih sesaat. 150ms cukup untuk kebanyakan browser tanpa terasa nge-lag.
+  // sempat tumpang tindih sesaat. 500ms cukup untuk kebanyakan browser tanpa terasa nge-lag.
   setTimeout(() => {
     const utter = new SpeechSynthesisUtterance(text);
     const replyLang = detectReplyLang(text);
@@ -782,7 +782,7 @@ function speak(text){
     utter.onend = () => setVoiceState('idle');
     utter.onerror = () => setVoiceState('idle');
     speechSynthesis.speak(utter);
-  }, 150);
+  }, 500);
 }
 
 if(!speechSupported){

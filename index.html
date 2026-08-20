@@ -328,7 +328,12 @@ const CONFIG = {
   SUPABASE_BUCKET: 'Video',
   // Endpoint proxy yang menyimpan Groq API key dengan aman di server (lihat api/chat.js).
   // Kalau di-deploy ke Vercel bersama api/chat.js, path relatif ini otomatis benar — TIDAK PERLU diubah.
+<<<<<<< HEAD
   CHAT_ENDPOINT: '/api/chat', // Kembalikan ke endpoint internal Vercel
+=======
+  CHAT_ENDPOINT: 'https://reliably-clapper-generic.ngrok-free.dev/v1/chat/completions',
+  // Ubah nama model sesuai yang berjalan di Ollama Anda
+>>>>>>> cef7546a42a7acc75414065ce28b20c9970b2923
   GROQ_MODEL: 'qwen2.5:3b'
 };
 
@@ -681,6 +686,10 @@ async function handleUserUtterance(text){
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
+<<<<<<< HEAD
+=======
+        "ngrok-skip-browser-warning": "true"
+>>>>>>> cef7546a42a7acc75414065ce28b20c9970b2923
       },
       body: JSON.stringify({
         model: CONFIG.GROQ_MODEL,

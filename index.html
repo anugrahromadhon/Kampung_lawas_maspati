@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Heritage Guide — Kampung Lawas Maspati</title>
+
+<!-- PWA: biar bisa di-"Add to Home Screen" dan kebuka full-screen kayak app -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16241c">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maspati Guide">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg: #16241c;
+  --surface: #1e3226;
+  --surface-2: #294031;
+  --line: #3a5342;
+  --gold: #c99a3e;
+  --gold-soft: #e0bd6d;
+  --brick: #ad4c31;
+  --indigo: #38477a;
+  --cream: #f1e7cd;
+  --cream-dim: #b9ae90;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Public Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0; height:100%;}
+body{
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+a{color:inherit;}
+::selection{ background: var(--gold); color: #16241c; }
+button:focus-visible, input:focus-visible, textarea:focus-visible{
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+/* ---------- app bar ---------- */
+.appbar{
+  flex-shrink:0; z-index:60;
+  display:flex; align-items:center; gap:11px;
+  padding: calc(12px + env(safe-area-inset-top,0px)) 18px 12px;
+  border-bottom:1px solid var(--line);
+  background: var(--bg);
+}
+.appbar-logo{ width:34px; height:34px; border-radius:10px; flex-shrink:0; display:block; }
+.appbar-name{ font-family:var(--font-display); font-weight:600; font-size:15.5px; line-height:1.2; }
+.appbar-tag{ font-family:var(--font-mono); font-size:10.5px; color:var(--cream-dim); letter-spacing:.03em; margin-top:1px; }
+.appbar-info{ margin-left:auto; width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:none; color:var(--cream-dim); font-family:var(--font-display); font-size:14px; cursor:pointer; flex-shrink:0; }
+.appbar-info:hover{ border-color:var(--gold-soft); color:var(--gold-soft); }
+
+/* ---------- layar (screens) ---------- */
+.app-main{ flex:1; min-height:0; position:relative; }
+.screen{ display:none; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.screen.active{ display:block; }
+.screen-pad{ max-width: 640px; margin:0 auto; padding: 18px 18px calc(30px + 88px + env(safe-area-inset-bottom,0px)); }
+.screen-lead{ margin-bottom:16px; }
+.screen-title{ font-family: var(--font-display); font-weight:600; font-size:21px; margin:0 0 4px; }
+.screen-desc{ color:var(--cream-dim); font-size:13.5px; }
+
+/* ---------- info sheet (pengganti footer) ---------- */
+.info-backdrop{ position:fixed; inset:0; background:rgba(8,14,10,0.78); display:none; align-items:flex-end; justify-content:center; z-index:998; }
+.info-backdrop.open{ display:flex; }
+.info-sheet{ background: var(--surface); border:1px solid var(--line); border-radius:20px 20px 0 0; max-width:640px; width:100%; padding:22px 22px calc(22px + env(safe-area-inset-bottom,0px)); }
+.info-sheet-title{ font-family:var(--font-display); font-weight:600; font-size:17px; margin-bottom:8px; }
+.info-sheet p{ color:var(--cream-dim); font-size:13.5px; margin: 0 0 18px; }
+
+.btn{ font-family: var(--font-body); font-weight: 600; font-size: 14.5px; border: none; border-radius: 999px; padding: 13px 26px; cursor: pointer; transition: transform .15s ease; }
+.btn:hover{ transform: translateY(-1px); }
+.btn-primary{ background: var(--gold); color: #1c1206; }
+.btn-primary:hover{ background: var(--gold-soft); }
+.btn-ghost{ background: transparent; color: var(--cream); border: 1px solid var(--line); }
+.btn-ghost:hover{ border-color: var(--gold-soft); color: var(--gold-soft); }
+
+/* ---------- peta ---------- */
+.map-layout{ display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; }
+@media (max-width: 800px){ .map-layout{ grid-template-columns: 1fr; } }
+#map{ height: 460px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+.leaflet-popup-content-wrapper{ background: var(--surface-2); color: var(--cream); border-radius: 10px; }
+.leaflet-popup-tip{ background: var(--surface-2); }
+.map-pop-title{ font-family: var(--font-display); font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.map-pop-btn{ font-family: var(--font-mono); font-size: 11px; color: var(--gold-soft); cursor:pointer; background:none; border:none; padding:0; text-decoration: underline; }
+
+.spot-list{ max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.spot-list-item{
+  display:flex; align-items:center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; cursor: pointer; text-align:left;
+  font-family: var(--font-body); color: var(--cream); font-size: 13.5px;
+}
+.spot-list-item:hover{ border-color: var(--gold-soft); }
+.spot-list-item.active{ border-color: var(--gold); background: var(--surface-2); }
+.spot-list-badge{ font-family: var(--font-mono); font-size: 11px; color: var(--gold-soft); width: 20px; flex-shrink:0; }
+.spot-list-name{ flex-grow:1; }
+.spot-list-tag{ font-family: var(--font-mono); font-size: 10px; color: var(--cream-dim); }
+
+/* ---------- modal ---------- */
+.modal-backdrop{
+  position: fixed; inset: 0; background: rgba(8,14,10,0.78);
+  display: none; align-items: center; justify-content: center; padding: 20px; z-index: 999;
+}
+.modal-backdrop.open{ display: flex; }
+.modal-card{
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto;
+}
+.modal-head{ display:flex; align-items:center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.modal-tag{ font-family: var(--font-mono); font-size: 11px; color: var(--gold-soft); text-transform: uppercase; }
+.modal-title{ font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-top: 2px; }
+.modal-close{ background: none; border: 1px solid var(--line); color: var(--cream); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 16px; flex-shrink:0; }
+.modal-close:hover{ border-color: var(--gold-soft); color: var(--gold-soft); }
+
+.media-video{ width: 100%; aspect-ratio: 16/9; background: #0d1712; display:block; }
+.media-fallback{
+  width: 100%; aspect-ratio: 16/9; background: #0d1712;
+  display:flex; flex-direction: column; align-items:center; justify-content:center; gap: 8px;
+  color: var(--cream-dim); font-family: var(--font-mono); font-size: 12px; text-align:center; padding: 20px;
+}
+
+.slideshow{ position: relative; aspect-ratio: 16/9; background: #0d1712; overflow: hidden; }
+.slide-img{ width:100%; height:100%; object-fit: cover; display:none; }
+.slide-img.show{ display:block; }
+.slide-fallback{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; color: var(--cream-dim); font-family: var(--font-mono); font-size: 12px; }
+.slide-nav{ position:absolute; top:50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size: 16px; }
+.slide-nav.prev{ left: 10px; } .slide-nav.next{ right: 10px; }
+.slide-dots{ position:absolute; bottom: 10px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
+.slide-dot{ width:7px; height:7px; border-radius:50%; background: rgba(255,255,255,0.4); cursor:pointer; border:none; padding:0; }
+.slide-dot.on{ background: var(--gold); }
+
+.modal-body{ padding: 18px 20px 24px; }
+.btn:disabled{ opacity: 0.35; cursor: not-allowed; transform: none; }
+.modal-nav-row{ display:flex; align-items:center; justify-content:space-between; gap: 10px; margin-bottom: 16px; }
+.modal-position{ font-family: var(--font-mono); font-size: 12px; color: var(--cream-dim); flex-shrink:0; }
+.modal-desc{ font-size: 14.5px; color: var(--cream); margin-bottom: 16px; }
+.modal-coord{ font-family: var(--font-mono); font-size: 11px; color: var(--cream-dim); margin-bottom: 16px; }
+.media-note{ font-family: var(--font-mono); font-size: 11px; color: var(--cream-dim); background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
+
+/* ---------- pemandu suara ---------- */
+.voice-panel{ background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 32px 22px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.voice-avatar-big{ width:54px; height:54px; border-radius:50%; background:var(--indigo); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--gold-soft); }
+.voice-status{ font-family: var(--font-mono); font-size:12.5px; color:var(--cream-dim); max-width: 440px; }
+.voice-caption{ background: var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:14px 18px; font-size:14px; color:var(--cream); max-width: 480px; width:100%; text-align:left; }
+.voice-caption .cap-role{ font-family:var(--font-mono); font-size:11px; color:var(--gold-soft); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
+.voice-hint{ font-family:var(--font-mono); font-size:11px; color:var(--cream-dim); opacity:0.8; }
+
+/* ---------- tab bar bawah + FAB mic ---------- */
+.tabbar{
+  flex-shrink:0; position:relative; z-index:900;
+  display:flex; align-items:center; justify-content:space-around;
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom,0px));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.tab-btn{
+  background:none; border:none; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  color: var(--cream-dim); font-family: var(--font-body); font-weight:600; font-size: 11px;
+  padding: 6px 20px; border-radius:12px; transition: color .15s ease;
+}
+.tab-btn svg{ width:22px; height:22px; }
+.tab-btn.active{ color: var(--gold-soft); }
+.tab-fab-slot{ width:76px; flex-shrink:0; }
+
+.pin-btn-wrap{ position:absolute; left:50%; bottom:28px; transform:translateX(-50%); z-index:1000; display:flex; flex-direction:column; align-items:center; gap:7px; }
+.pin-btn{
+  width:58px; height:58px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--gold);
+  border: 4px solid var(--bg);
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+  transition: background .2s ease;
+}
+.pin-btn:hover{ background: var(--gold-soft); }
+.pin-btn-icon{ transform: rotate(45deg); color:#1c1206; width:24px; height:24px; }
+.pin-btn.state-listening{ background: var(--brick); animation: pin-pulse 1.2s ease-in-out infinite; }
+.pin-btn.state-thinking{ background: var(--indigo); }
+.pin-btn.state-speaking{ background: var(--gold-soft); animation: pin-pulse 1.6s ease-in-out infinite; }
+@keyframes pin-pulse{
+  0%{ box-shadow: 0 8px 18px rgba(0,0,0,0.4), 0 0 0 0 rgba(173,76,49,0.5); }
+  70%{ box-shadow: 0 8px 18px rgba(0,0,0,0.4), 0 0 0 14px rgba(173,76,49,0); }
+  100%{ box-shadow: 0 8px 18px rgba(0,0,0,0.4), 0 0 0 0 rgba(173,76,49,0); }
+}
+.pin-label{ font-family: var(--font-mono); font-size: 10px; color: var(--cream-dim); background: rgba(22,36,28,0.9); padding: 3px 10px; border-radius:999px; opacity:0; pointer-events:none; transition: opacity .15s ease; }
+.pin-label.show{ opacity:1; }
+
+@media (prefers-reduced-motion: reduce){ *{ transition: none !important; } .pin-btn{ animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <img src="icon-192.png" alt="" class="appbar-logo">
+  <div>
+    <div class="appbar-name">Kampung Lawas Maspati</div>
+    <div class="appbar-tag">AI Heritage Guide</div>
+  </div>
+  <button class="appbar-info" onclick="toggleInfoSheet()" aria-label="Tentang aplikasi">i</button>
+</header>
+
+<main class="app-main">
+
+  <section id="peta" class="screen active">
+    <div class="screen-pad">
+      <div class="screen-lead">
+        <h2 class="screen-title">Peta Jelajah</h2>
+        <p class="screen-desc">Tekan penanda di peta atau daftar di sampingnya untuk membuka video, foto, dan cerita singkat tiap titik.</p>
+      </div>
+      <div class="map-layout">
+        <div id="map"></div>
+        <div class="spot-list" id="spotList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pemandu" class="screen">
+    <div class="screen-pad">
+      <div class="screen-lead">
+        <h2 class="screen-title">Cak Pandu</h2>
+        <p class="screen-desc">Cak Pandu hanya menjawab dari data yang tersedia di peta — bukan mengarang cerita.</p>
+      </div>
+      <div class="voice-panel">
+        <div class="voice-avatar-big">CP</div>
+        <div class="voice-status" id="voiceStatus">Konteks: Umum Kampung Lawas Maspati — tekan tombol mic di bawah kapan saja</div>
+        <div class="voice-caption" id="voiceCaption"><span class="cap-role">Cak Pandu</span>Sugeng rawuh! Tekan tombol mic di bawah buat mulai ngobrol, atau buka salah satu titik di peta dulu.</div>
+        <div class="voice-hint" id="voiceHint">🎙️ Tahan gaya bicara singkat &amp; jelas — Cak Pandu akan menjawab dengan suara juga.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="info-backdrop" id="infoBackdrop" onclick="if(event.target===this) toggleInfoSheet()">
+  <div class="info-sheet">
+    <div class="info-sheet-title">Tentang aplikasi</div>
+    <p>AI Heritage Guide · Prototipe untuk Proposal OPSI IPT — MTs Negeri 4 Kota Surabaya. Data peta dari hasil survei lapangan tim peneliti.</p>
+    <button class="btn btn-ghost" onclick="toggleInfoSheet()">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-tag" id="modalTag">Titik</div>
+        <div class="modal-title" id="modalTitle">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Tutup">✕</button>
+    </div>
+    <video class="media-video" id="modalVideo" autoplay muted loop playsinline></video>
+    <div class="media-fallback" id="modalVideoFallback" style="display:none;">
+      🎬 Video dokumentasi belum diunggah untuk titik ini.
+    </div>
+    <div class="slideshow" id="modalSlideshow">
+      <img class="slide-img" id="slideImg0">
+      <button class="slide-nav prev" onclick="slideStep(-1)" aria-label="Foto sebelumnya">‹</button>
+      <button class="slide-nav next" onclick="slideStep(1)" aria-label="Foto berikutnya">›</button>
+      <div class="slide-dots" id="slideDots"></div>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc" id="modalDesc">—</p>
+      <div class="modal-coord" id="modalCoord"></div>
+      <div class="media-note" id="modalMediaNote"></div>
+      <div class="modal-nav-row">
+        <button class="btn btn-ghost" id="modalPrev" onclick="stepSpot(-1)">‹ Sebelumnya</button>
+        <span class="modal-position" id="modalPosition">1 / 14</span>
+        <button class="btn btn-ghost" id="modalNext" onclick="stepSpot(1)">Berikutnya ›</button>
+      </div>
+      <button class="btn btn-primary" onclick="askAboutSpotFromModal()">Tanya Cak Pandu soal titik ini</button>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab-btn active" id="tabPeta" onclick="switchScreen('peta')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+    <span>Peta</span>
+  </button>
+
+  <div class="tab-fab-slot">
+    <div class="pin-btn-wrap">
+      <div class="pin-label" id="pinLabel">Tekan untuk bicara</div>
+      <button class="pin-btn" id="pinBtn" onclick="togglePinMic()" aria-label="Bicara dengan Cak Pandu">
+        <svg class="pin-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="8" y1="22" x2="16" y2="22"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <button class="tab-btn" id="tabPemandu" onclick="switchScreen('pemandu')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+    <span>Pemandu</span>
+  </button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= KONFIGURASI — ISI BAGIAN INI ================= */
+const CONFIG = {
+  // URL project Supabase kalian, contoh: 'https://abcdxyz.supabase.co'
+  // (Project Settings → API → Project URL)
+  SUPABASE_URL: 'https://skrpqbavpmzbuizzagmv.supabase.co/rest/v1/',
+  // Nama bucket Storage berisi folder media tiap titik. Bucket ini WAJIB di-set "Public".
+  SUPABASE_BUCKET: 'Video',
+  // Endpoint proxy yang menyimpan Groq API key dengan aman di server (lihat api/chat.js).
+  // Kalau di-deploy ke Vercel bersama api/chat.js, path relatif ini otomatis benar — TIDAK PERLU diubah.
+  CHAT_ENDPOINT: '/api/chat',
+  // Model Groq yang dipakai Cak Pandu — ganti ke 'openai/gpt-oss-20b' kalau mau lebih cepat/ringan
+  GROQ_MODEL: 'groq/compound'
+};
+
+// Membentuk URL publik file di Supabase Storage dari path relatif, mis. "01-rumah-4-budaya/video.mp4"
+function mediaUrl(path){
+  return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/${CONFIG.SUPABASE_BUCKET}/${path}`;
+}
+
+/* ================= DATA TITIK (hasil survei lapangan) ================= */
+/* CATATAN UNTUK TIM: ganti "video" dan "images" tiap titik dengan path file dokumentasi asli kalian
+   DI DALAM BUCKET SUPABASE — path relatif saja, tanpa awalan "media/", contoh:
+   video: "01-rumah-4-budaya/video.mp4", images: ["01-rumah-4-budaya/1.jpg", "..."]
+   Struktur foldernya di bucket Supabase harus persis sama dengan path ini.
+   Jika file belum ada, tampilan otomatis menunjukkan pesan "belum diunggah" — bukan error rusak. */
+const SPOTS = [
+  { id:1, title:"Rumah 4 Budaya", tag:"Rumah Budaya", lat:-7.2478762, lng:112.7362952,
+    desc:"Satu rumah yang menampilkan gambaran empat unsur budaya masyarakat kampung dalam satu tempat.",
+    video:"01-rumah-4-budaya/video.mp4", images:["01-rumah-4-budaya/1.jpg","01-rumah-4-budaya/2.jpg"] },
+  { id:2, title:"Rumah Kecil Budaya Filosofi Jawa", tag:"Filosofi Jawa", lat:-7.2478246, lng:112.7361685,
+    desc:"Rumah mungil berisi benda-benda yang menggambarkan filosofi hidup budaya Jawa.",
+    video:"02-filosofi-jawa/video.mp4", images:["02-filosofi-jawa/1.jpg"] },
+  { id:3, title:"Tanaman Herbal & Padusan Langgar", tag:"Herbal", lat:-7.2478037, lng:112.7360951,
+    desc:"Kebun kecil tanaman herbal warga, dilengkapi area padusan (tempat bersuci) di langgar kampung tak jauh dari sini.",
+    video:"03-tanaman-herbal/video.mp4", images:["03-tanaman-herbal/1.jpg","03-tanaman-herbal/2.jpg"] },
+  { id:4, title:"Taman Baca & Mesin 3D Printer", tag:"Edukasi", lat:-7.2477325, lng:112.7359341,
+    desc:"Taman baca warga yang kini juga dilengkapi mesin cetak 3D sebagai wujud adaptasi teknologi di kampung.",
+    video:"04-taman-baca/video.mp4", images:["04-taman-baca/1.jpg"] },
+  { id:5, title:"Balai RW: Sampah Organik & Napeni Beras", tag:"Lingkungan", lat:-7.2477521, lng:112.7358466,
+    desc:"Balai RW yang mengelola sampah organik warga, sekaligus memperagakan tradisi napeni (menampi) beras.",
+    video:"05-balai-rw/video.mp4", images:["05-balai-rw/1.jpg","05-balai-rw/2.jpg"] },
+  { id:6, title:"Rumah Tua Markas Pemuda (kini Perpus Cafe)", tag:"Sejarah", lat:-7.2477475, lng:112.7356284,
+    desc:"Dulu menjadi markas pemuda pejuang kampung, kini beralih fungsi menjadi perpustakaan sekaligus kafe.",
+    video:"06-markas-pemuda/video.mp4", images:["06-markas-pemuda/1.jpg"] },
+  { id:7, title:"Sekolah Ongko Loro", tag:"Sekolah Pribumi Pertama", lat:-7.2477139, lng:112.7354218,
+    desc:"Bekas sekolah pribumi pertama di Surabaya, saksi sejarah pendidikan warga kampung sejak era kolonial.",
+    video:"07-ongko-loro/video.mp4", images:["07-ongko-loro/1.jpg","07-ongko-loro/2.jpg"] },
+  { id:8, title:"Pembudidayaan Ikan Lele", tag:"Ketahanan Pangan", lat:-7.2477042, lng:112.7353424,
+    desc:"Kolam budidaya ikan lele warga sebagai contoh praktik ketahanan pangan mandiri di kampung.",
+    video:"08-lele/video.mp4", images:["08-lele/1.jpg"] },
+  { id:9, title:"Edukasi UMKM Kampung", tag:"UMKM", lat:-7.2477042, lng:112.7353424,
+    desc:"Sentra UMKM warga: keripik bayam, sewel, teh herbal, tanaman karet kebo, hingga es gronjong bunga telang.",
+    video:"09-umkm/video.mp4", images:["09-umkm/1.jpg","09-umkm/2.jpg"] },
+  { id:10, title:"Pojok Selfie", tag:"Spot Foto", lat:-7.2477150, lng:112.7353750,
+    desc:"Spot foto ikonik kampung tepat di sebelah sentra UMKM, dengan latar mural dan ornamen khas Kampung Lawas Maspati.",
+    video:"10-pojok-selfie/video.mp4", images:["10-pojok-selfie/1.jpg","10-pojok-selfie/2.jpg"] },
+  { id:11, title:"Instalasi IPAL", tag:"Lingkungan", lat:-7.2474192, lng:112.7352918,
+    desc:"Instalasi pengolahan air limbah (IPAL) kampung, contoh pengelolaan lingkungan mandiri oleh warga.",
+    video:"11-ipal/video.mp4", images:["11-ipal/1.jpg"] },
+  { id:12, title:"Permainan Tradisional", tag:"Permainan", lat:-7.2474116, lng:112.7352961,
+    desc:"Area bermain permainan tradisional: catur, engklek, dan ular tangga untuk pengunjung.",
+    video:"12-permainan/video.mp4", images:["12-permainan/1.jpg","12-permainan/2.jpg"] },
+  { id:13, title:"Rumah Raden Sumaniharjo (Mantri)", tag:"Rumah Tokoh", lat:-7.2474002, lng:112.7351553,
+    desc:"Rumah milik Raden Sumaniharjo, seorang mantri, salah satu tokoh yang pernah tinggal di kampung ini.",
+    video:"13-raden-sumaniharjo/video.mp4", images:["13-raden-sumaniharjo/1.jpg"] },
+  { id:14, title:"Aula", tag:"Ruang Warga", lat:-7.2473467, lng:112.7347778,
+    desc:"Aula serbaguna milik warga kampung, digunakan untuk pertemuan, pelatihan, dan berbagai kegiatan komunitas Kampung Lawas Maspati.",
+    video:"14-aula/video.mp4", images:["14-aula/1.jpg"] },
+  { id:15, title:"Pesarehan Mbah Buyut Suruh", tag:"Situs Tertua", lat:-7.2473866, lng:112.7347248,
+    desc:"Situs tertua di kampung: pesarehan (makam) Mbah Buyut Suruh, Karyo Sentono, abdi dalem Keraton Surabaya.",
+    video:"15-pesarehan/video.mp4", images:["15-pesarehan/1.jpg","15-pesarehan/2.jpg"] },
+];
+
+const KAMPUNG_CONTEXT = `
+Kamu adalah "Cak Pandu", pemandu wisata AI untuk Kampung Lawas Maspati di kawasan Bubutan, Surabaya.
+Gaya bicaramu ramah, hangat, sedikit medok Suroboyoan tapi tetap sopan dan mudah dipahami. Jawab singkat (2-5 kalimat), jangan mengarang fakta di luar data berikut.
+
+LATAR BELAKANG UMUM:
+Kampung ini menyimpan jejak perjuangan arek-arek Suroboyo pada masa revolusi fisik 1945, dan kini menjadi destinasi wisata edukatif dengan rangkaian penyambutan berupa upacara penyerahan minuman, pemakaian sarung simbolis, dan foto bersama di gerbang kampung.
+
+DAFTAR TITIK DI KAMPUNG (dari hasil survei lapangan):
+${SPOTS.map(s => `- ${s.title} (${s.tag}): ${s.desc}`).join('\n')}
+
+Jika ditanya hal di luar data ini, jujur katakan datanya belum tersedia dan sarankan bertanya ke pemandu wisata setempat.
+`;
+
+let activeSpot = null;
+let chatHistory = [];
+let slideState = { images: [], idx: 0 };
+let markersById = {};
+let map;
+
+/* ================= Render peta ================= */
+const goldIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#c99a3e;border:2px solid #16241c;box-shadow:0 0 0 2px #e0bd6d;"></div>',
+  iconSize: [16,16], iconAnchor: [8,8]
+});
+const activeIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:20px;height:20px;border-radius:50%;background:#ad4c31;border:2px solid #16241c;box-shadow:0 0 0 3px #e0bd6d;"></div>',
+  iconSize: [20,20], iconAnchor: [10,10]
+});
+
+function initMap(){
+  map = L.map('map', {
+    dragging: false,
+    touchZoom: false,
+    doubleClickZoom: false,
+    scrollWheelZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    zoomControl: false,
+    tap: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  const trailCoords = SPOTS.map(s => [s.lat, s.lng]);
+  L.polyline(trailCoords, { color:'#c99a3e', weight:2, dashArray:'4,6', opacity:0.6 }).addTo(map);
+
+  SPOTS.forEach(spot => {
+    const marker = L.marker([spot.lat, spot.lng], { icon: goldIcon }).addTo(map);
+    marker.on('click', () => openSpot(spot.id));
+    markersById[spot.id] = marker;
+  });
+
+  map.fitBounds(trailCoords, { padding: [24, 24] });
+}
+initMap();
+
+/* ================= Navigasi antar layar (app-shell) ================= */
+function switchScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === name));
+  document.getElementById('tabPeta').classList.toggle('active', name === 'peta');
+  document.getElementById('tabPemandu').classList.toggle('active', name === 'pemandu');
+  if(name === 'peta' && map){ setTimeout(() => map.invalidateSize(), 50); }
+}
+function toggleInfoSheet(){
+  document.getElementById('infoBackdrop').classList.toggle('open');
+}
+
+/* ================= Render daftar titik ================= */
+const spotListEl = document.getElementById('spotList');
+SPOTS.forEach(spot => {
+  const item = document.createElement('button');
+  item.className = 'spot-list-item';
+  item.id = 'listitem-' + spot.id;
+  item.innerHTML = `<span class="spot-list-badge">${spot.id}</span><span class="spot-list-name">${spot.title}<br><span class="spot-list-tag">${spot.tag}</span></span>`;
+  item.addEventListener('click', () => openSpot(spot.id));
+  spotListEl.appendChild(item);
+});
+
+/* ================= Modal titik ================= */
+function openSpot(id){
+  const spot = SPOTS.find(s => s.id === id);
+  if(!spot) return;
+  activeSpot = spot;
+
+  document.querySelectorAll('.spot-list-item').forEach(el => el.classList.remove('active'));
+  const listEl = document.getElementById('listitem-' + id);
+  if(listEl) listEl.classList.add('active');
+
+  Object.entries(markersById).forEach(([mid, marker]) => {
+    marker.setIcon(Number(mid) === id ? activeIcon : goldIcon);
+  });
+
+  document.getElementById('modalTag').textContent = spot.tag;
+  document.getElementById('modalTitle').textContent = spot.id + '. ' + spot.title;
+  document.getElementById('modalDesc').textContent = spot.desc;
+  document.getElementById('modalCoord').textContent = `Koordinat: ${spot.lat}, ${spot.lng}`;
+  document.getElementById('modalMediaNote').textContent = 'Video & foto di bawah ini mengambil dari file dokumentasi tim. Jika belum diunggah, akan tampil pesan "belum tersedia".';
+
+  const video = document.getElementById('modalVideo');
+  const videoFallback = document.getElementById('modalVideoFallback');
+  video.style.display = 'block';
+  videoFallback.style.display = 'none';
+  video.onerror = () => { video.style.display = 'none'; videoFallback.style.display = 'flex'; };
+  video.src = mediaUrl(spot.video);
+  video.load();
+  video.play().catch(() => {});
+
+  slideState = { images: spot.images || [], idx: 0 };
+  renderSlideshow();
+
+  document.getElementById('modalBackdrop').classList.add('open');
+  updateNavButtons();
+}
+
+function updateNavButtons(){
+  const idx = SPOTS.findIndex(s => s.id === activeSpot.id);
+  document.getElementById('modalPosition').textContent = (idx + 1) + ' / ' + SPOTS.length;
+  document.getElementById('modalPrev').disabled = idx <= 0;
+  document.getElementById('modalNext').disabled = idx >= SPOTS.length - 1;
+}
+
+function stepSpot(dir){
+  const idx = SPOTS.findIndex(s => s.id === activeSpot.id);
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= SPOTS.length) return;
+  openSpot(SPOTS[newIdx].id);
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').classList.remove('open');
+  const video = document.getElementById('modalVideo');
+  video.pause();
+}
+document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+  if(e.target.id === 'modalBackdrop') closeModal();
+});
+
+function renderSlideshow(){
+  const ss = document.getElementById('modalSlideshow');
+  ss.querySelectorAll('.slide-img, .slide-fallback').forEach(n => n.remove());
+  const dotsWrap = document.getElementById('slideDots');
+  dotsWrap.innerHTML = '';
+
+  if(!slideState.images.length){
+    const fb = document.createElement('div');
+    fb.className = 'slide-fallback';
+    fb.textContent = '📷 Foto dokumentasi belum diunggah untuk titik ini.';
+    ss.insertBefore(fb, ss.firstChild);
+    return;
+  }
+
+  slideState.images.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.className = 'slide-img' + (i === slideState.idx ? ' show' : '');
+    img.src = mediaUrl(src);
+    img.onerror = () => {
+      img.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'slide-fallback' + (i === slideState.idx ? ' show' : ''),
+        textContent: '📷 Foto belum tersedia (' + src + ')'
+      }));
+    };
+    ss.insertBefore(img, ss.querySelector('.slide-nav'));
+
+    const dot = document.createElement('button');
+    dot.className = 'slide-dot' + (i === slideState.idx ? ' on' : '');
+    dot.onclick = () => { slideState.idx = i; renderSlideshow(); };
+    dotsWrap.appendChild(dot);
+  });
+}
+function slideStep(dir){
+  if(!slideState.images.length) return;
+  slideState.idx = (slideState.idx + dir + slideState.images.length) % slideState.images.length;
+  renderSlideshow();
+}
+
+function askAboutSpotFromModal(){
+  closeModal();
+  chatHistory = [];
+  document.getElementById('voiceStatus').textContent = 'Konteks: ' + activeSpot.title + ' — tekan tombol mic di bawah kapan saja';
+  const greeting = `Sip, kita lagi di titik ${activeSpot.title}. Mau tanya apa soal titik ini?`;
+  chatHistory.push({ role:'ai', text: greeting });
+  showCaption('ai', greeting);
+  document.getElementById('pemandu').scrollTop = 0;
+  switchScreen('pemandu');
+  speak(greeting); // dipicu dari klik tombol, jadi audio diizinkan browser
+}
+
+/* ================= Pemandu Suara (STT + TTS) ================= */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+const speechSupported = !!SpeechRecognitionAPI;
+const ttsSupported = 'speechSynthesis' in window;
+let recognition = null;
+let voiceState = 'idle'; // idle | listening | thinking | speaking
+let idVoice = null;
+
+function pickIndonesianVoice(){
+  if(!ttsSupported) return;
+  const voices = speechSynthesis.getVoices();
+  idVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id')) || null;
+}
+if(ttsSupported){
+  pickIndonesianVoice();
+  speechSynthesis.onvoiceschanged = pickIndonesianVoice;
+}
+
+function showCaption(role, text){
+  const cap = document.getElementById('voiceCaption');
+  cap.innerHTML = `<span class="cap-role">${role === 'user' ? 'Kamu' : 'Cak Pandu'}</span>${text}`;
+}
+
+function setVoiceState(state){
+  voiceState = state;
+  const btn = document.getElementById('pinBtn');
+  btn.classList.remove('state-listening', 'state-thinking', 'state-speaking');
+  if(state !== 'idle') btn.classList.add('state-' + state);
+  const labels = {
+    idle: 'Tekan untuk bicara',
+    listening: 'Mendengarkan…',
+    thinking: 'Cak Pandu mikir…',
+    speaking: 'Tekan untuk memotong'
+  };
+  const labelEl = document.getElementById('pinLabel');
+  labelEl.textContent = labels[state];
+  labelEl.classList.toggle('show', state !== 'idle');
+}
+
+function togglePinMic(){
+  if(!speechSupported){
+    document.getElementById('voiceStatus').textContent = 'Browser ini belum mendukung input suara. Coba buka pakai Chrome terbaru di HP atau laptop.';
+    return;
+  }
+  if(voiceState === 'listening'){
+    recognition && recognition.stop();
+    return;
+  }
+  if(voiceState === 'speaking'){
+    speechSynthesis.cancel();
+    setVoiceState('idle');
+    return;
+  }
+  if(voiceState === 'thinking') return;
+  startListening();
+}
+
+function startListening(){
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = 'id-ID';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  setVoiceState('listening');
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    handleUserUtterance(transcript);
+  };
+  recognition.onerror = (e) => {
+    console.error('Speech recognition error:', e.error);
+    setVoiceState('idle');
+    document.getElementById('voiceStatus').textContent =
+      e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'Izin mikrofon ditolak. Aktifkan akses mikrofon di pengaturan browser lalu coba lagi.'
+        : 'Nggak kedengaran suaranya, coba tekan mic lagi ya.';
+  };
+  recognition.onend = () => {
+    if(voiceState === 'listening') setVoiceState('idle');
+  };
+  recognition.start();
+}
+
+async function handleUserUtterance(text){
+  setVoiceState('thinking');
+  showCaption('user', text);
+  chatHistory.push({ role:'user', text });
+
+  const systemPrompt = KAMPUNG_CONTEXT + (activeSpot ? `\n\nKONTEKS TITIK AKTIF: ${activeSpot.title} — ${activeSpot.desc}` : '\n\nBelum ada titik spesifik dipilih, jawab secara umum tentang kampung.') + '\n\nIngat: balasanmu akan dibacakan lewat suara, jadi hindari format markdown, daftar bernomor, atau simbol — cukup kalimat lisan yang natural.';
+
+  try{
+    const apiMessages = chatHistory
+      .filter(m => m.role === 'user' || m.role === 'ai')
+      .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }));
+
+    const response = await fetch(CONFIG.CHAT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: CONFIG.GROQ_MODEL,
+        messages: [{ role: "system", content: systemPrompt }, ...apiMessages]
+      })
+    });
+    const data = await response.json();
+    if(!response.ok || data.error){
+      throw new Error(data.error?.message || `HTTP ${response.status}`);
+    }
+    const reply = data.choices?.[0]?.message?.content?.trim() || 'Maaf, aku belum bisa jawab itu sekarang. Coba tekan mic lagi ya.';
+    chatHistory.push({ role:'ai', text: reply });
+    showCaption('ai', reply);
+    speak(reply);
+  }catch(err){
+    console.error('Chat error:', err);
+    const fallback = 'Waduh, koneksi ke Cak Pandu lagi bermasalah. Coba tekan mic lagi sebentar ya.';
+    showCaption('ai', fallback);
+    speak(fallback);
+  }
+}
+
+function speak(text){
+  if(!ttsSupported){
+    setVoiceState('idle');
+    return;
+  }
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'id-ID';
+  if(idVoice) utter.voice = idVoice;
+  utter.rate = 1;
+  utter.onstart = () => setVoiceState('speaking');
+  utter.onend = () => setVoiceState('idle');
+  utter.onerror = () => setVoiceState('idle');
+  speechSynthesis.speak(utter);
+}
+
+if(!speechSupported){
+  document.getElementById('voiceStatus').textContent = 'Browser ini belum mendukung input suara — coba buka pakai Chrome terbaru di HP atau laptop.';
+}
+
+</script>
+
+</body>
+</html>

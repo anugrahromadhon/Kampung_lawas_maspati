@@ -680,7 +680,10 @@ async function handleUserUtterance(text){
 
     const response = await fetch(CONFIG.CHAT_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
       body: JSON.stringify({
         model: CONFIG.GROQ_MODEL,
         messages: [{ role: "system", content: systemPrompt }, ...apiMessages]

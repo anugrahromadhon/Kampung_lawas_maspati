@@ -328,9 +328,9 @@ const CONFIG = {
   SUPABASE_BUCKET: 'Video',
   // Endpoint proxy yang menyimpan Groq API key dengan aman di server (lihat api/chat.js).
   // Kalau di-deploy ke Vercel bersama api/chat.js, path relatif ini otomatis benar — TIDAK PERLU diubah.
-  CHAT_ENDPOINT: '/api/chat',
-  // Model Groq yang dipakai Cak Pandu — ganti ke 'openai/gpt-oss-20b' kalau mau lebih cepat/ringan
-  GROQ_MODEL: 'groq/compound'
+  CHAT_ENDPOINT: 'https://reliably-clapper-generic.ngrok-free.dev/v1/chat/completions',
+  // Ubah nama model sesuai yang berjalan di Ollama Anda
+  GROQ_MODEL: 'qwen2.5:3b'
 };
 
 // Membentuk URL publik file di Supabase Storage dari path relatif, mis. "01-rumah-4-budaya/video.mp4"

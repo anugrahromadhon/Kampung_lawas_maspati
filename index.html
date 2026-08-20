@@ -160,6 +160,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
 .voice-caption{ background: var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:14px 18px; font-size:14px; color:var(--cream); max-width: 480px; width:100%; text-align:left; }
 .voice-caption .cap-role{ font-family:var(--font-mono); font-size:11px; color:var(--gold-soft); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
 .voice-hint{ font-family:var(--font-mono); font-size:11px; color:var(--cream-dim); opacity:0.8; }
+.lang-toggle{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.lang-btn{ font-family: var(--font-body); font-weight:600; font-size:12px; border:1px solid var(--line); border-radius:999px; padding:7px 14px; background:transparent; color:var(--cream-dim); cursor:pointer; transition: border-color .15s ease, color .15s ease; }
+.lang-btn.active{ border-color: var(--gold); color: var(--gold-soft); background: rgba(201,154,62,0.1); }
 
 /* ---------- tab bar bawah + FAB mic ---------- */
 .tabbar{
@@ -240,10 +243,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
         <p class="screen-desc">Neng Siti hanya menjawab dari data yang tersedia di peta — bukan mengarang cerita.</p>
       </div>
       <div class="voice-panel">
-        <div class="voice-avatar-big">CP</div>
+        <div class="voice-avatar-big">NS</div>
         <div class="voice-status" id="voiceStatus">Konteks: Umum Kampung Lawas Maspati — tekan tombol mic di bawah kapan saja</div>
         <div class="voice-caption" id="voiceCaption"><span class="cap-role">Neng Siti</span>Sugeng rawuh! Tekan tombol mic di bawah buat mulai ngobrol, atau buka salah satu titik di peta dulu.</div>
-        <div class="voice-hint" id="voiceHint">🎙️ Tahan gaya bicara singkat &amp; jelas — Neng Siti akan menjawab dengan suara juga.</div>
+        <div class="lang-toggle" id="langToggle">
+          <button class="lang-btn active" id="langBtnID" onclick="setSttLang('id-ID')" type="button">🇮🇩 Bahasa Indonesia</button>
+          <button class="lang-btn" id="langBtnEN" onclick="setSttLang('en-US')" type="button">🇬🇧 English</button>
+        </div>
+        <div class="voice-hint" id="voiceHint">🎙️ Pilih bahasa yang mau kamu ucapkan di atas, lalu tekan tombol mic. Neng Siti otomatis membalas dalam bahasa yang sama.</div>
       </div>
     </div>
   </section>
@@ -395,13 +402,17 @@ const KAMPUNG_CONTEXT = `
 Kamu adalah "Neng Siti", pemandu wisata AI untuk Kampung Lawas Maspati di kawasan Bubutan, Surabaya.
 Gaya bicaramu ramah, hangat, sedikit medok Suroboyoan tapi tetap sopan dan mudah dipahami. Jawab singkat (2-5 kalimat), jangan mengarang fakta di luar data berikut.
 
+ATURAN BAHASA (PENTING):
+Jika pertanyaan pengunjung berbahasa Inggris, jawab SEPENUHNYA dalam Bahasa Inggris yang ramah dan sopan (tanpa logat Suroboyoan, dan jangan campur dengan Bahasa Indonesia). Jika pertanyaan berbahasa Indonesia, jawab dengan gaya khas Neng Siti seperti biasa. Selalu balas dalam bahasa yang sama dengan pertanyaan pengunjung.
+Contoh: pertanyaan "What is this place?" dijawab dalam Bahasa Inggris, misalnya "This spot is...".
+
 LATAR BELAKANG UMUM:
 Kampung ini menyimpan jejak perjuangan arek-arek Suroboyo pada masa revolusi fisik 1945, dan kini menjadi destinasi wisata edukatif dengan rangkaian penyambutan berupa upacara penyerahan minuman, pemakaian sarung simbolis, dan foto bersama di gerbang kampung.
 
 DAFTAR TITIK DI KAMPUNG (dari hasil survei lapangan):
 ${SPOTS.map(s => `- ${s.title} (${s.tag}): ${s.desc}`).join('\n')}
 
-Jika ditanya hal di luar data ini, jujur katakan datanya belum tersedia dan sarankan bertanya ke pemandu wisata setempat.
+Jika ditanya hal di luar data ini, jujur katakan datanya belum tersedia dan sarankan bertanya ke pemandu wisata setempat (Bahasa Indonesia) / say the information isn't available yet and suggest asking the on-site guide (English).
 `;
 
 let activeSpot = null;
@@ -588,15 +599,36 @@ const ttsSupported = 'speechSynthesis' in window;
 let recognition = null;
 let voiceState = 'idle'; // idle | listening | thinking | speaking
 let idVoice = null;
+let enVoice = null;
+let sttLang = 'id-ID';
 
-function pickIndonesianVoice(){
+function setSttLang(lang){
+  sttLang = lang;
+  document.getElementById('langBtnID').classList.toggle('active', lang === 'id-ID');
+  document.getElementById('langBtnEN').classList.toggle('active', lang === 'en-US');
+}
+
+function pickVoices(){
   if(!ttsSupported) return;
   const voices = speechSynthesis.getVoices();
   idVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id')) || null;
+  enVoice = voices.find(v => v.lang && v.lang.toLowerCase() === 'en-us')
+         || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) || null;
 }
 if(ttsSupported){
-  pickIndonesianVoice();
-  speechSynthesis.onvoiceschanged = pickIndonesianVoice;
+  pickVoices();
+  speechSynthesis.onvoiceschanged = pickVoices;
+}
+
+// Deteksi kasar bahasa dari teks balasan AI, dipakai untuk memilih suara TTS yang sesuai.
+function detectReplyLang(text){
+  const idWords = ['yang','dan','ini','itu','dengan','untuk','tidak','ada','dari','pada','juga','bisa','akan','kita','saya','kampung','adalah','tersebut','warga','nggak','ya','kayak'];
+  const enWords = ['the','and','this','that','with','for','not','are','from','also','can','will','you','your','village','is','were','have','has','it','of','was'];
+  const lower = ' ' + text.toLowerCase().replace(/[.,!?;:()"']/g, ' ') + ' ';
+  let idScore = 0, enScore = 0;
+  idWords.forEach(w => { if(lower.includes(' ' + w + ' ')) idScore++; });
+  enWords.forEach(w => { if(lower.includes(' ' + w + ' ')) enScore++; });
+  return enScore > idScore ? 'en' : 'id';
 }
 
 function showCaption(role, text){
@@ -640,7 +672,7 @@ function togglePinMic(){
 
 function startListening(){
   recognition = new SpeechRecognitionAPI();
-  recognition.lang = 'id-ID';
+  recognition.lang = sttLang;
   recognition.continuous = false;
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
@@ -710,8 +742,14 @@ function speak(text){
   }
   speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'id-ID';
-  if(idVoice) utter.voice = idVoice;
+  const replyLang = detectReplyLang(text);
+  if(replyLang === 'en'){
+    utter.lang = 'en-US';
+    if(enVoice) utter.voice = enVoice;
+  } else {
+    utter.lang = 'id-ID';
+    if(idVoice) utter.voice = idVoice;
+  }
   utter.rate = 1;
   utter.onstart = () => setVoiceState('speaking');
   utter.onend = () => setVoiceState('idle');

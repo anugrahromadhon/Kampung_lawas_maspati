@@ -719,6 +719,19 @@ async function handleUserUtterance(text){
       .filter(m => m.role === 'user' || m.role === 'ai')
       .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }));
 
+    // Perkuat instruksi bahasa dengan menempelkannya langsung ke pertanyaan TERBARU saja
+    // (bukan cuma di system prompt yang panjang). Model kecil lebih patuh pada instruksi yang
+    // dekat dengan pertanyaan daripada instruksi yang jauh, apalagi system prompt ini didominasi
+    // teks Bahasa Indonesia (15 deskripsi titik). sttLang dipakai karena sudah pasti diketahui dari
+    // toggle yang dipilih pengguna — tidak perlu menebak dari hasil transkrip yang bisa meleset.
+    const lastMsg = apiMessages[apiMessages.length - 1];
+    if(lastMsg && lastMsg.role === 'user'){
+      const langDirective = sttLang === 'en-US'
+        ? 'IMPORTANT: The visitor is speaking English. Reply to the message below ENTIRELY in English. Do not use any Indonesian words.\n\nVisitor\'s message: '
+        : 'PENTING: Pengunjung berbicara Bahasa Indonesia. Balas pesan di bawah ini SEPENUHNYA dalam Bahasa Indonesia gaya Neng Siti seperti biasa.\n\nPesan pengunjung: ';
+      lastMsg.content = langDirective + lastMsg.content;
+    }
+
     const response = await fetch(CONFIG.CHAT_ENDPOINT, {
       method: "POST",
       headers: { 

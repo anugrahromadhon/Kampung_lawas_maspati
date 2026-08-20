@@ -323,14 +323,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
 const CONFIG = {
   // URL project Supabase kalian, contoh: 'https://abcdxyz.supabase.co'
   // (Project Settings → API → Project URL)
-  SUPABASE_URL: 'https://skrpqbavpmzbuizzagmv.supabase.co/rest/v1/',
+  SUPABASE_URL: 'https://skrpqbavpmzbuizzagmv.supabase.co',
   // Nama bucket Storage berisi folder media tiap titik. Bucket ini WAJIB di-set "Public".
   SUPABASE_BUCKET: 'Video',
   // Endpoint proxy yang menyimpan Groq API key dengan aman di server (lihat api/chat.js).
   // Kalau di-deploy ke Vercel bersama api/chat.js, path relatif ini otomatis benar — TIDAK PERLU diubah.
-  CHAT_ENDPOINT: '/api/chat',
-  // Model Groq yang dipakai Cak Pandu — ganti ke 'openai/gpt-oss-20b' kalau mau lebih cepat/ringan
-  GROQ_MODEL: 'groq/compound'
+  CHAT_ENDPOINT: '/api/chat', // Kembalikan ke endpoint internal Vercel
+  GROQ_MODEL: 'qwen2.5:3b'
 };
 
 // Membentuk URL publik file di Supabase Storage dari path relatif, mis. "01-rumah-4-budaya/video.mp4"
@@ -680,7 +679,9 @@ async function handleUserUtterance(text){
 
     const response = await fetch(CONFIG.CHAT_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         model: CONFIG.GROQ_MODEL,
         messages: [{ role: "system", content: systemPrompt }, ...apiMessages]

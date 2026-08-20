@@ -236,14 +236,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
   <section id="pemandu" class="screen">
     <div class="screen-pad">
       <div class="screen-lead">
-        <h2 class="screen-title">Cak Pandu</h2>
-        <p class="screen-desc">Cak Pandu hanya menjawab dari data yang tersedia di peta — bukan mengarang cerita.</p>
+        <h2 class="screen-title">Neng Siti</h2>
+        <p class="screen-desc">Neng Siti hanya menjawab dari data yang tersedia di peta — bukan mengarang cerita.</p>
       </div>
       <div class="voice-panel">
         <div class="voice-avatar-big">CP</div>
         <div class="voice-status" id="voiceStatus">Konteks: Umum Kampung Lawas Maspati — tekan tombol mic di bawah kapan saja</div>
-        <div class="voice-caption" id="voiceCaption"><span class="cap-role">Cak Pandu</span>Sugeng rawuh! Tekan tombol mic di bawah buat mulai ngobrol, atau buka salah satu titik di peta dulu.</div>
-        <div class="voice-hint" id="voiceHint">🎙️ Tahan gaya bicara singkat &amp; jelas — Cak Pandu akan menjawab dengan suara juga.</div>
+        <div class="voice-caption" id="voiceCaption"><span class="cap-role">Neng Siti</span>Sugeng rawuh! Tekan tombol mic di bawah buat mulai ngobrol, atau buka salah satu titik di peta dulu.</div>
+        <div class="voice-hint" id="voiceHint">🎙️ Tahan gaya bicara singkat &amp; jelas — Neng Siti akan menjawab dengan suara juga.</div>
       </div>
     </div>
   </section>
@@ -282,11 +282,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
       <div class="modal-coord" id="modalCoord"></div>
       <div class="media-note" id="modalMediaNote"></div>
       <div class="modal-nav-row">
-        <button class="btn btn-ghost" id="modalPrev" onclick="stepSpot(-1)">‹ Sebelumnya</button>
+        <button class="btn btn-ghost" id="modalPrev" onclick="stepSpot(-1)">‹- </button>
         <span class="modal-position" id="modalPosition">1 / 14</span>
-        <button class="btn btn-ghost" id="modalNext" onclick="stepSpot(1)">Berikutnya ›</button>
+        <button class="btn btn-ghost" id="modalNext" onclick="stepSpot(1)"> -›</button>
       </div>
-      <button class="btn btn-primary" onclick="askAboutSpotFromModal()">Tanya Cak Pandu soal titik ini</button>
+      <button class="btn btn-primary" onclick="askAboutSpotFromModal()">Tanya Neng Siti soal titik ini</button>
     </div>
   </div>
 </div>
@@ -300,7 +300,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{
   <div class="tab-fab-slot">
     <div class="pin-btn-wrap">
       <div class="pin-label" id="pinLabel">Tekan untuk bicara</div>
-      <button class="pin-btn" id="pinBtn" onclick="togglePinMic()" aria-label="Bicara dengan Cak Pandu">
+      <button class="pin-btn" id="pinBtn" onclick="togglePinMic()" aria-label="Bicara dengan Neng Siti">
         <svg class="pin-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
           <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
@@ -392,7 +392,7 @@ const SPOTS = [
 ];
 
 const KAMPUNG_CONTEXT = `
-Kamu adalah "Cak Pandu", pemandu wisata AI untuk Kampung Lawas Maspati di kawasan Bubutan, Surabaya.
+Kamu adalah "Neng Siti", pemandu wisata AI untuk Kampung Lawas Maspati di kawasan Bubutan, Surabaya.
 Gaya bicaramu ramah, hangat, sedikit medok Suroboyoan tapi tetap sopan dan mudah dipahami. Jawab singkat (2-5 kalimat), jangan mengarang fakta di luar data berikut.
 
 LATAR BELAKANG UMUM:
@@ -601,7 +601,7 @@ if(ttsSupported){
 
 function showCaption(role, text){
   const cap = document.getElementById('voiceCaption');
-  cap.innerHTML = `<span class="cap-role">${role === 'user' ? 'Kamu' : 'Cak Pandu'}</span>${text}`;
+  cap.innerHTML = `<span class="cap-role">${role === 'user' ? 'Kamu' : 'Neng Siti'}</span>${text}`;
 }
 
 function setVoiceState(state){
@@ -612,7 +612,7 @@ function setVoiceState(state){
   const labels = {
     idle: 'Tekan untuk bicara',
     listening: 'Mendengarkan…',
-    thinking: 'Cak Pandu mikir…',
+    thinking: 'Neng Siti mikir…',
     speaking: 'Tekan untuk memotong'
   };
   const labelEl = document.getElementById('pinLabel');
@@ -697,7 +697,7 @@ async function handleUserUtterance(text){
     speak(reply);
   }catch(err){
     console.error('Chat error:', err);
-    const fallback = 'Waduh, koneksi ke Cak Pandu lagi bermasalah. Coba tekan mic lagi sebentar ya.';
+    const fallback = 'Waduh, koneksi ke Neng Siti lagi bermasalah. Coba tekan mic lagi sebentar ya.';
     showCaption('ai', fallback);
     speak(fallback);
   }

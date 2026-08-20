@@ -612,8 +612,18 @@ function pickVoices(){
   if(!ttsSupported) return;
   const voices = speechSynthesis.getVoices();
   idVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('id')) || null;
-  enVoice = voices.find(v => v.lang && v.lang.toLowerCase() === 'en-us')
-         || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) || null;
+
+  // Web Speech API tidak punya properti "gender" resmi, jadi ini tebakan terbaik dari nama voice
+  // yang umum dipakai berbagai OS/browser untuk suara perempuan bahasa Inggris.
+  const enVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  const femaleHints = ['female','zira','samantha','victoria','karen','moira','tessa','susan','joanna','salli','kimberly','ivy','kendra','aria','jenny','emma','ana','fiona'];
+  const maleHints = ['male','david','daniel','alex','mark','guy','matthew','justin','joey','tom','fred','ryan','eric','brian'];
+
+  enVoice =
+    enVoices.find(v => femaleHints.some(h => v.name.toLowerCase().includes(h))) ||
+    enVoices.find(v => v.lang.toLowerCase() === 'en-us' && !maleHints.some(h => v.name.toLowerCase().includes(h))) ||
+    enVoices.find(v => v.lang.toLowerCase() === 'en-us') ||
+    enVoices[0] || null;
 }
 if(ttsSupported){
   pickVoices();
@@ -741,20 +751,25 @@ function speak(text){
     return;
   }
   speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  const replyLang = detectReplyLang(text);
-  if(replyLang === 'en'){
-    utter.lang = 'en-US';
-    if(enVoice) utter.voice = enVoice;
-  } else {
-    utter.lang = 'id-ID';
-    if(idVoice) utter.voice = idVoice;
-  }
-  utter.rate = 1;
-  utter.onstart = () => setVoiceState('speaking');
-  utter.onend = () => setVoiceState('idle');
-  utter.onerror = () => setVoiceState('idle');
-  speechSynthesis.speak(utter);
+  // Browser butuh sedikit jeda supaya cancel() benar-benar tuntas sebelum ucapan baru dimulai —
+  // kalau langsung speak() lagi setelah cancel() (apalagi ganti voice/bahasa), dua suara bisa
+  // sempat tumpang tindih sesaat. 150ms cukup untuk kebanyakan browser tanpa terasa nge-lag.
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(text);
+    const replyLang = detectReplyLang(text);
+    if(replyLang === 'en'){
+      utter.lang = 'en-US';
+      if(enVoice) utter.voice = enVoice;
+    } else {
+      utter.lang = 'id-ID';
+      if(idVoice) utter.voice = idVoice;
+    }
+    utter.rate = 1;
+    utter.onstart = () => setVoiceState('speaking');
+    utter.onend = () => setVoiceState('idle');
+    utter.onerror = () => setVoiceState('idle');
+    speechSynthesis.speak(utter);
+  }, 150);
 }
 
 if(!speechSupported){

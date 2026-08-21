@@ -598,6 +598,7 @@ const speechSupported = !!SpeechRecognitionAPI;
 const ttsSupported = 'speechSynthesis' in window;
 let recognition = null;
 let voiceState = 'idle'; // idle | listening | thinking | speaking
+let isProcessingUtterance = false; // guard: cegah dua permintaan AI diproses bersamaan
 let idVoice = null;
 let enVoice = null;
 let sttLang = 'id-ID';
@@ -687,9 +688,17 @@ function startListening(){
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
+  // Guard: di sebagian browser/device (terutama recognizer en-US yang kurang stabil finalisasinya),
+  // onresult bisa terpanggil berkali-kali dalam satu sesi rekam yang sama. Tanpa guard ini, tiap
+  // panggilan akan mengirim request AI + suara sendiri-sendiri sehingga terdengar tumpang tindih.
+  // Cukup proses hasil YANG PERTAMA kali masuk, abaikan sisanya.
+  let resultHandled = false;
+
   setVoiceState('listening');
 
   recognition.onresult = (e) => {
+    if(resultHandled) return;
+    resultHandled = true;
     const transcript = e.results[0][0].transcript;
     handleUserUtterance(transcript);
   };
@@ -708,6 +717,11 @@ function startListening(){
 }
 
 async function handleUserUtterance(text){
+  // Lapisan pengaman kedua: kalau ada permintaan lain yang masih berjalan, abaikan panggilan baru
+  // ini alih-alih mengirim request AI + suara yang bertumpuk.
+  if(isProcessingUtterance) return;
+  isProcessingUtterance = true;
+
   setVoiceState('thinking');
   showCaption('user', text);
   chatHistory.push({ role:'user', text });
@@ -755,6 +769,8 @@ async function handleUserUtterance(text){
     const fallback = 'Waduh, koneksi ke Neng Siti lagi bermasalah. Coba tekan mic lagi sebentar ya.';
     showCaption('ai', fallback);
     speak(fallback);
+  }finally{
+    isProcessingUtterance = false;
   }
 }
 
@@ -766,7 +782,7 @@ function speak(text){
   speechSynthesis.cancel();
   // Browser butuh sedikit jeda supaya cancel() benar-benar tuntas sebelum ucapan baru dimulai —
   // kalau langsung speak() lagi setelah cancel() (apalagi ganti voice/bahasa), dua suara bisa
-  // sempat tumpang tindih sesaat. 500ms cukup untuk kebanyakan browser tanpa terasa nge-lag.
+  // sempat tumpang tindih sesaat. 150ms cukup untuk kebanyakan browser tanpa terasa nge-lag.
   setTimeout(() => {
     const utter = new SpeechSynthesisUtterance(text);
     const replyLang = detectReplyLang(text);
@@ -782,7 +798,7 @@ function speak(text){
     utter.onend = () => setVoiceState('idle');
     utter.onerror = () => setVoiceState('idle');
     speechSynthesis.speak(utter);
-  }, 500);
+  }, 150);
 }
 
 if(!speechSupported){
